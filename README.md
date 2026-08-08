@@ -1,8 +1,16 @@
-# tury-stack-frontend-pattern
+# @turystack/frontend-pattern
 
-Frontend application decisions for Turystack web and mobile products.
+Frontend engineering constitution skill — how each layer and cross-cutting concern is written in a turystack frontend. Installed into .claude/skills and/or .codex/skills via the turystack CLI.
 
-- [Overview](00-overview.md)
+## Installation
+
+```bash
+pnpm add -D @turystack/frontend-pattern
+```
+
+## Contents
+
+- [Frontend Engineering Standards](00-overview.md)
 - [Project Structure & Ownership](01-project-structure.md)
 - [API Contract & Server State](02-sdk.md)
 - [Features, Components & Client State](03-components-client-state.md)
@@ -17,3 +25,8 @@ Frontend application decisions for Turystack web and mobile products.
 - [Security & Permissions](12-security-permissions.md)
 - [Testing](13-testing.md)
 - [Telemetry](14-telemetry.md)
+- [Skill manifest](SKILL.md)
+
+## Documentation
+
+**https://tury.dev/libs/frontend-pattern**
