@@ -2,13 +2,17 @@
 
 **Concept.** A backoffice tool has to stay usable in a narrow window — mobile-first, breakpoints by token and every wide piece of content with a defined collapse behavior. Density is a decision: the container (Confirm, Modal, Sheet, route) is sized by the content, not by habit.
 
-> **How to read this file.** Two parts, deliberately separated:
-> - **🌐 Generic pattern** — the **portable law**. Holds in any stack (React, Vue, etc.); the text stays true even after swapping frameworks. This is what review enforces as an invariant.
-> - **🛠️ Project-specific** — the **code** that implements each rule in the current stack (TypeScript · React · TanStack · @turystack). Swapping stacks rewrites **only** this part; the law above does not change.
->
-> Each rule carries an id `RSP-n` linking the law (generic) to the code (specific). Gates bind by **id**, not by file/line. `RSP-L*` rules are **stack lints**: they exist only because of the current language's ergonomics (they invert in another stack), but they stay id-registered and enforced in this project.
+> **How to read this file.** 🌐 Generic pattern is the portable law; 🛠️
+> Project-specific is that same law expressed as code in TypeScript · React ·
+> TanStack · @turystack. The split, `XXX-n` versus `XXX-Ln`, and why an
+> `ARC-…` law is cited and never restated: `turystack-frontend-pattern` › *How
+> a section is written*.
 
 ---
+
+**Rules defined here:** `RSP-1` · `RSP-2` · `RSP-3` · `RSP-4` · `RSP-5` ·
+`RSP-L1` — the law is the *Invariants* table below; every ❌ item cites the id
+it violates.
 
 ## 🌐 Generic pattern (portable — stack-independent)
 
@@ -24,16 +28,15 @@
 
 ### Invariants (the law the gates enforce)
 
-> Bind by **id**. `constitutional` = portable invariant (holds in any stack). `stack lint` = exists only because of the current language's ergonomics and inverts in another stack — still id-registered and enforced here. The **detector** (how the gate catches the violation) is project-specific and lives in the 🛠️ part below.
 
-| ID | Law (one line) | Type | Detector (🛠️) |
-|---|---|---|---|
-| RSP-1 | Mobile-first: narrow base, width is enhancement — never the other way around | constitutional | Scenario 1 / ❌ |
-| RSP-2 | Breakpoints only from design system tokens; raw px in a media query is banned | constitutional | ❌ |
-| RSP-3 | Wide content declares collapse/stacking/scroll; a fixed px width that overflows the viewport is banned | constitutional | Scenario 2 / ❌ |
-| RSP-4 | Touch target keeps the design system minimum; the hit area never shrinks | constitutional | Scenario 2 / ❌ |
-| RSP-5 | Container chosen by density: Confirm → Modal → Sheet → dedicated route | constitutional | Scenario 3 / ❌ (ruler applied in 06-data-surfaces.md) |
-| RSP-L1 | `useIsMobile` only for a structural switch CSS cannot express; visual variation stays in the primitives' CSS | stack lint | Scenario 1 / ❌ |
+| ID | Law (one line) | Class | Gate | Detector (🛠️) |
+|---|---|---|---|---|
+| RSP-1 | Mobile-first: narrow base, width is enhancement — never the other way around | constitutional | `manual` | Scenario 1 / ❌ |
+| RSP-2 | Breakpoints only from design system tokens; raw px in a media query is banned | constitutional | `grit:no-raw-breakpoint` | ❌ |
+| RSP-3 | Wide content declares collapse/stacking/scroll; a fixed px width that overflows the viewport is banned | constitutional | `manual` | Scenario 2 / ❌ |
+| RSP-4 | Touch target keeps the design system minimum; the hit area never shrinks | constitutional | `manual` | Scenario 2 / ❌ |
+| RSP-5 | Container chosen by density: Confirm → Modal → Sheet → dedicated route | constitutional | `manual` | Scenario 3 / ❌ (ruler applied in 06-data-surfaces.md) |
+| RSP-L1 | `useIsMobile` only for a structural switch CSS cannot express; visual variation stays in the primitives' CSS | stack lint | `manual` | Scenario 1 / ❌ |
 
 ---
 

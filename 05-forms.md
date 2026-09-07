@@ -2,11 +2,21 @@
 
 **Concept.** A form is a business component: it validates with the Zod schema from `~sdk`, submits through the generated mutation and emits success to the parent. The form knows fields and errors; navigation, flow reset and the destination of the result belong to whoever mounts it.
 
-> **How to read this file.** Two parts, deliberately separated:
-> - **🌐 Generic pattern** — the **portable law**. Holds in any stack (React, Vue, etc.); the text stays true even after swapping frameworks. This is what review enforces as an invariant.
-> - **🛠️ Project-specific** — the **code** that implements each rule in the current stack (TypeScript · React · TanStack · @turystack). Swapping stacks rewrites **only** this part; the law above does not change.
->
-> Each rule carries an id `FRM-n` linking the law (generic) to the code (specific). Gates bind by **id**, not by file/line. `FRM-L*` rules are **stack lints**: they exist only because of the current language's ergonomics (they invert in another stack), but they stay id-registered and enforced in this project.
+> **How to read this file.** 🌐 Generic pattern is the portable law; 🛠️
+> Project-specific is that same law expressed as code in TypeScript · React ·
+> TanStack · @turystack. The split, `XXX-n` versus `XXX-Ln`, and why an
+> `ARC-…` law is cited and never restated: `turystack-frontend-pattern` › *How
+> a section is written*.
+
+## In this file
+
+- [🌐 Generic pattern (portable — stack-independent)](#generic-pattern-portable-stack-independent)
+  - [Invariants (the law the gates enforce)](#invariants-the-law-the-gates-enforce)
+- [🛠️ Project-specific (TypeScript · React · TanStack · @turystack)](#project-specific-typescript-react-tanstack-turystack)
+  - [✅ How to do it](#how-to-do-it)
+  - [❌ Never do](#never-do)
+
+**Rules defined here:** `FRM-1` · `FRM-2` · `FRM-3` · `FRM-4` · `FRM-5` · `FRM-6` · `FRM-7` · `FRM-8` · `FRM-9` · `FRM-10` · `FRM-11` · `FRM-L1` · `FRM-L2` — the law itself is the *Invariants* table below; every ❌ item cites the id it violates.
 
 ---
 
@@ -39,26 +49,28 @@ meaning, so it belongs to the feature, never to `ui/`. **[FRM-2]**
 
 **FRM-L1 — spread a compatible field.** When the field's contract matches the input primitive, spread it (`{...form.register('name')}` / `{...field}`); never repeat `name`/`onChange`/`onBlur`/`value` by hand. Unwrap manually only when the component's contract requires value normalization. **[FRM-L1]**
 
-> Two neighboring laws apply to every form and live in their own sections: a form inside a dismissible container (Sheet/Modal/edit page) wires the unsaved guard — law and contract in 03-components-client-state.md; fields and layout compose the design system's form primitives, never raw HTML — consumption law in 03-components-client-state.md.
+**FRM-L2 — client-side validation is composed onto the SDK schema, never written beside it.** The generated schema carries only what OpenAPI can express, so a body the API rejects for a blank name still submits from the browser. The form closes that gap by composing `@turystack/fields` **on top of** the SDK schema — `schema.extend({...})` for a stronger field or a client-only one (`passwordConfirmation`, terms acceptance) — a client-only field is still a field a human types, so it is still a field schema, plus the cross-field refinements. Replacing the SDK schema with a hand-written one is still `FRM-1`. A form with no endpoint at all — a local filter — validates entirely with `@turystack/fields`. **[FRM-L2]**
+
+> Three neighboring laws apply to every form and live in their own sections: a form inside a dismissible container (Sheet/Modal/edit page) wires the unsaved guard — law and contract in 03-components-client-state.md; fields and layout compose the design system's form primitives, never raw HTML — consumption law in 03-components-client-state.md; a field the backend constrains to be unique is not validated by the form but by its own `{Entity}{Field}Input`, which owns the contract's availability read — law in `COM-10`, and the form's part of it is mapping the verdict to `setError`/`clearErrors` and adding `checking` to the `FRM-7` gate.
 
 ### Invariants (the law the gates enforce)
 
-> Bind by **id**. `constitutional` = portable invariant (holds in any stack). `stack lint` = exists only because of the current language's ergonomics and inverts in another stack — still id-registered and enforced here. The **detector** (how the gate catches the violation) is project-specific and lives in the 🛠️ part below.
 
-| ID | Law (one line) | Type | Detector (🛠️) |
-|---|---|---|---|
-| FRM-1 | Form schema and types come from `~sdk`; hand-written Zod for an API payload and manual interfaces banned | constitutional | Scenario 1 / ❌ |
-| FRM-2 | Form lives in `features/{feature}/components/{name}-form/`; never inline in a route | constitutional | Scenario 2 / ❌ |
-| FRM-3 | One component owns `useForm`; multi-section via `FormProvider`, never prop-drilling `register`/`control` | constitutional | Scenario 3 |
-| FRM-4 | Create/edit = one component with `mode`; conditional only on a field that differs between schemas | constitutional | Scenario 1 / ❌ |
-| FRM-5 | `defaultValues` straight into construction; no `useEffect`+`reset`, no `useMemo` | constitutional | Scenario 1 / ❌ |
-| FRM-6 | Submission only through the SDK's generated mutation; never `fetch` | constitutional | Scenario 1 / ❌ |
-| FRM-7 | Submit disabled while `isSubmitting \|\| isPending` | constitutional | Scenario 1 / ❌ |
-| FRM-8 | Field name = SDK schema key; no remapping | constitutional | Scenario 1 / ❌ |
-| FRM-9 | Form-wide error above the `<Form>`; field error next to the field | constitutional | Scenario 1 / ❌ |
-| FRM-10 | Success emitted to the parent via `onSuccess?`; the form never navigates | constitutional | Scenarios 1–2 / ❌ |
-| FRM-11 | `error.message` as it came; branch only on `error.code` | constitutional | Scenario 1 / ❌ |
-| FRM-L1 | Spread of a compatible RHF field; manual wiring banned | stack lint | Scenario 1 / ❌ |
+| ID | Law (one line) | Class | Gate | Detector (🛠️) |
+|---|---|---|---|---|
+| FRM-1 | Form schema and types come from `~sdk`; hand-written Zod for an API payload and manual interfaces banned | constitutional | `gate:sdk-shadow` | Scenario 1 / ❌ |
+| FRM-2 | Form lives in `features/{feature}/components/{name}-form/`; never inline in a route | constitutional | `gate:folder-shape` | Scenario 2 / ❌ |
+| FRM-3 | One component owns `useForm`; multi-section via `FormProvider`, never prop-drilling `register`/`control` | constitutional | `manual` | Scenario 3 |
+| FRM-4 | Create/edit = one component with `mode`; conditional only on a field that differs between schemas | constitutional | `manual` | Scenario 1 / ❌ |
+| FRM-5 | `defaultValues` straight into construction; no `useEffect`+`reset`, no `useMemo` | constitutional | `grit:no-reset-effect` | Scenario 1 / ❌ |
+| FRM-6 | Submission only through the SDK's generated mutation; never `fetch` | constitutional | `gate:no-fetch-outside-client` | Scenario 1 / ❌ |
+| FRM-7 | Submit disabled while `isSubmitting \|\| isPending` | constitutional | `manual` | Scenario 1 / ❌ |
+| FRM-8 | Field name = SDK schema key; no remapping | constitutional | `manual` | Scenario 1 / ❌ |
+| FRM-9 | Form-wide error above the `<Form>`; field error next to the field | constitutional | `manual` | Scenario 1 / ❌ |
+| FRM-10 | Success emitted to the parent via `onSuccess?`; the form never navigates | constitutional | `grit:no-navigate-in-form` | Scenarios 1–2 / ❌ |
+| FRM-11 | `error.message` as it came; branch only on `error.code` | constitutional | `grit:no-branch-on-message` | Scenario 1 / ❌ |
+| FRM-L1 | Spread of a compatible RHF field; manual wiring banned | stack lint | `manual` | Scenario 1 / ❌ |
+| FRM-L2 | Client-side rules composed onto the SDK schema with `@turystack/fields`; never a parallel hand-written schema | stack lint | `manual` | Scenario 4 / ❌ |
 
 ---
 
@@ -78,12 +90,13 @@ meaning, so it belongs to the feature, never to `ui/`. **[FRM-2]**
 - **FRM-4** — `mode` discriminates the props (`{ mode: 'edit'; userId: string }`), picks schema and mutation; a create-only field renders under `props.mode === 'create'`.
 - **FRM-5** — edit with async data: the parent only mounts the form once the query has resolved (Skeleton before that — see 07-ui-states-and-feedback.md); the form is born with `defaultValues` ready.
 - **FRM-6** — Kubb's mutation hooks (`useCreateUser`, `useUpdateUser`; a custom method comes generated too: `usePayInvoice`, never a manual URL). Cache invalidation in 02-sdk.md.
-- **FRM-7** — `const submitting = form.formState.isSubmitting || mutation.isPending`; `<Button disabled={submitting} loading={submitting} type="submit">`.
+- **FRM-7** — `const submitting = form.formState.isSubmitting || mutation.isPending`; `<Button disabled={submitting} loading={submitting} type="submit">`. A form with a uniqueness-checked field adds that field's `checking` status to the same expression (`COM-10`) — otherwise the user submits before the verdict lands.
 - **FRM-8** — `register` uses the schema's exact key; format conversion happens in the input primitive (`CurrencyInput`, `MaskInput`…), never by renaming the field.
 - **FRM-9** — `<Alert variant="destructive">` with `errors.root.message` **before** the `<Form>`; field error via the `error` prop of `Form.Field`.
 - **FRM-10** — `onSuccess?.(result)` inside the mutation's `onSuccess`; the route turns it into `navigate` (see 04-routes-app-shell.md). A form never imports `useNavigate`/`Route`.
 - **FRM-11** — every API error body is the `Exception` model `{ statusCode, code, message, ...metadata }` with a stable snake_case `code`. Default: `form.setError('root', { message: error.message })`; branch on `error.code` only for a non-default reaction (`setError('email', …)`). Full contract in 11-error-handling.md.
 - **FRM-L1** — `<Input {...form.register('name')} />`; `Controller` only when the primitive requires a controlled value, and even then `<Select {...field} />` spreading the field.
+- **FRM-L2** — `createUserSchema.extend({ document: CpfSchema(), passwordConfirmation: RequiredStringSchema() }).superRefine(MatchFieldRefine('password', 'passwordConfirmation'))`; the resolver keeps taking one schema. Client-side messages resolve from `FieldIssueCode` through the app's own table — that is **not** `FRM-11`, which governs the message the **server** sent and forbids rewriting it. A validation error that never reached the API has no server message to preserve.
 - **Composition** — fields use `Form` / `Form.Field` / `Form.FieldSet` from `@turystack/react-web`: `label`, `description` and `error` are props of `Form.Field`; never raw `<form>`/`<label>` (see 03-components-client-state.md).
 - **Dismissible container** — a Sheet/Modal/edit page with a form wires `useUnsaved` fed by `form.formState.isDirty` — law and contract in 03-components-client-state.md.
 
@@ -304,6 +317,52 @@ export function OrganizationAddressSection() {
 }
 ```
 
+**Scenario 4 — the SDK schema strengthened for the browser:** `[FRM-1, FRM-L2, FRM-8, FRM-9]`
+
+```tsx
+import {
+  MatchFieldRefine,
+  MustAcceptSchema,
+  PasswordSchema,
+  RequiredStringSchema,
+} from '@turystack/fields'
+import { CpfSchema } from '@turystack/fields/br'
+import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
+import { z } from 'zod'
+
+import { createUserSchema } from '~sdk'
+
+// FRM-1: the payload shape still comes from the SDK — this composes onto it,
+// it does not redeclare it
+const formSchema = createUserSchema
+  .extend({
+    // FRM-L2: OpenAPI cannot express a CPF check digit, so the browser would
+    // otherwise post an invalid document and learn about it from a 422
+    document: CpfSchema(),
+    password: PasswordSchema(),
+    // client-only: never leaves the browser, so it has no SDK counterpart
+    acceptedTerms: MustAcceptSchema(),
+    // FRM-L2: still a field a human types, so it is still a field schema —
+    // z.string() accepts '   ' and reports `too_small` instead of `required`
+    passwordConfirmation: RequiredStringSchema(),
+  })
+  .superRefine(MatchFieldRefine('password', 'passwordConfirmation'))
+
+type Values = z.infer<typeof formSchema>
+
+const form = useForm<Values>({ resolver: standardSchemaResolver(formSchema) })
+
+// FRM-9: the error sits next to its field — MatchFieldRefine reports on
+// passwordConfirmation, not on the form root
+<Form.Field error={form.formState.errors.passwordConfirmation?.message} label="Confirm password">
+  <Input type="password" {...form.register('passwordConfirmation')} />
+</Form.Field>
+```
+
+The submit sends only what the endpoint declares: strip the client-only keys
+(`passwordConfirmation`, `acceptedTerms`) at the mutation call, never by making
+the form's shape diverge from the SDK's.
+
 ### ❌ Never do
 
 ```tsx
@@ -312,6 +371,18 @@ const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
 })
+
+// ❌ [FRM-L2] hand-rolled field rules in a form — each one has a case it misses
+name: z.string().min(1)        // '   ' submits; use RequiredStringSchema()
+price: z.coerce.number()       // '' becomes 0; use MoneySchema()
+birthDate: z.coerce.date()     // the day moves in a negative-offset zone; use DateOnlySchema()
+document: z.string().length(11) // 111.111.111-11 passes; use CpfSchema()
+
+// ❌ [FRM-L2] a second schema beside the SDK's instead of composing onto it
+const clientSchema = z.object({ ...everythingAgain })  // use createUserSchema.extend({...})
+
+// ❌ [FRM-L2] matching a validation message instead of its code
+if (error.message.includes('Too small')) { /* breaks on the next zod release */ }
 
 // ❌ [FRM-1] hand-written interface for API form values — the type is inferred from the schema
 interface UserFormValues {

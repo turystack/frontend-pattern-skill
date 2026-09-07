@@ -2,13 +2,17 @@
 
 **Concept.** Copy is part of the contract, not decoration. The product picks ONE language (examples here are en-US) and every UI string follows it; a placeholder steers the action, a button starts with a verb, and empty/error text says what the user does now — never only what happened.
 
-> **How to read this file.** Two parts, deliberately separated:
-> - **🌐 Generic pattern** — the **portable law**. Holds in any stack (React, Vue, etc.); the text stays true even after swapping frameworks. This is what review enforces as an invariant.
-> - **🛠️ Project-specific** — the **code** that implements each rule in the current stack (TypeScript · React · TanStack · @turystack). Swapping stacks rewrites **only** this part; the law above does not change.
->
-> Each rule carries an id `TXT-n` linking the law (generic) to the code (specific). Gates bind by **id**, not by file/line. `TXT-L*` rules are **stack lints**: they exist only because of the current language's ergonomics (they invert in another stack), but they stay id-registered and enforced in this project.
+> **How to read this file.** 🌐 Generic pattern is the portable law; 🛠️
+> Project-specific is that same law expressed as code in TypeScript · React ·
+> TanStack · @turystack. The split, `XXX-n` versus `XXX-Ln`, and why an
+> `ARC-…` law is cited and never restated: `turystack-frontend-pattern` › *How
+> a section is written*.
 
 ---
+
+**Rules defined here:** `TXT-1` · `TXT-2` · `TXT-3` · `TXT-4` · `TXT-5` ·
+`TXT-L1` — the law is the *Invariants* table below; every ❌ item cites the id
+it violates.
 
 ## 🌐 Generic pattern (portable — stack-independent)
 
@@ -24,16 +28,15 @@
 
 ### Invariants (the law the gates enforce)
 
-> Bind by **id**. `constitutional` = portable invariant (holds in any stack). `stack lint` = exists only because of the current language's ergonomics and inverts in another stack — still id-registered and enforced here. The **detector** (how the gate catches the violation) is project-specific and lives in the 🛠️ part below.
 
-| ID | Law (one line) | Type | Detector (🛠️) |
-|---|---|---|---|
-| TXT-1 | One language per product; every UI string follows it — zero strings stranded in another language | constitutional | Scenarios 1–4 / ❌ |
-| TXT-2 | A placeholder declares intent (`Filter by…`), never an option (`All…`) nor an empty label (`Select`) | constitutional | Scenario 1 / ❌ |
-| TXT-3 | Empty/error in a pair: what happened + the CTA for what to do now | constitutional | Scenario 2 / ❌ |
-| TXT-4 | Buttons verb-first; titles/labels/buttons in sentence case | constitutional | Scenarios 2–3 / ❌ |
-| TXT-5 | API error shown as it came (`error.message`); never written/rewritten in the frontend | constitutional | Scenario 2 / ❌ (consumption law in 11-error-handling.md) |
-| TXT-L1 | Primitives' internal strings come from `translations` in the root `Provider` — once, never per usage | stack lint | Scenario 4 / ❌ |
+| ID | Law (one line) | Class | Gate | Detector (🛠️) |
+|---|---|---|---|---|
+| TXT-1 | One language per product; every UI string follows it — zero strings stranded in another language | constitutional | `manual` | Scenarios 1–4 / ❌ |
+| TXT-2 | A placeholder declares intent (`Filter by…`), never an option (`All…`) nor an empty label (`Select`) | constitutional | `manual` | Scenario 1 / ❌ |
+| TXT-3 | Empty/error in a pair: what happened + the CTA for what to do now | constitutional | `manual` | Scenario 2 / ❌ |
+| TXT-4 | Buttons verb-first; titles/labels/buttons in sentence case | constitutional | `manual` | Scenarios 2–3 / ❌ |
+| TXT-5 | API error shown as it came (`error.message`); never written/rewritten in the frontend | constitutional | `manual` | Scenario 2 / ❌ (consumption law in 11-error-handling.md) |
+| TXT-L1 | Primitives' internal strings come from `translations` in the root `Provider` — once, never per usage | stack lint | `manual` | Scenario 4 / ❌ |
 
 ---
 

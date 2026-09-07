@@ -7,11 +7,23 @@ generated SDK. Recurring API-derived rendering becomes a `{Entity}{Concern}`
 widget with its own hook and mapping; a primitive wrapper derives props via
 `Omit` and never redeclares a parallel contract.
 
-> **How to read this file.** Two parts, deliberately separated:
-> - **🌐 Generic pattern** — the **portable law**. Holds in any stack (React, Vue, etc.); the text stays true even after swapping frameworks. This is what review enforces as an invariant.
-> - **🛠️ Project-specific** — the **code** that implements each rule in the current stack (TypeScript · React · TanStack · @turystack). Swapping stacks rewrites **only** this part; the law above does not change.
->
-> Each rule carries an id `COM-n` linking the law (generic) to the code (specific). Gates bind by **id**, not by file/line. `COM-L*` rules are **stack lints**: they exist only because of the current language's ergonomics (they invert in another stack), but they stay id-registered and enforced in this project.
+> **How to read this file.** 🌐 Generic pattern is the portable law; 🛠️
+> Project-specific is that same law expressed as code in TypeScript · React ·
+> TanStack · @turystack. The split, `XXX-n` versus `XXX-Ln`, and why an
+> `ARC-…` law is cited and never restated: `turystack-frontend-pattern` › *How
+> a section is written*.
+
+## In this file
+
+- [🌐 Generic pattern (portable — stack-independent)](#generic-pattern-portable-stack-independent)
+  - [Invariants (the law the gates enforce)](#invariants-the-law-the-gates-enforce)
+- [🛠️ Project-specific (TypeScript · React · TanStack · @turystack)](#project-specific-typescript-react-tanstack-turystack)
+  - [✅ How to do it](#how-to-do-it)
+- [Client state ownership](#client-state-ownership)
+- [Primitive ownership](#primitive-ownership)
+  - [❌ Never do](#never-do)
+
+**Rules defined here:** `COM-1` · `COM-2` · `COM-3` · `COM-4` · `COM-5` · `COM-6` · `COM-7` · `COM-8` · `COM-9` · `COM-10` · `COM-L1` · `COM-L2` — the law itself is the *Invariants* table below; every ❌ item cites the id it violates.
 
 ---
 
@@ -36,7 +48,7 @@ generated hooks (see `02-sdk.md` and `05-forms.md`). **[COM-2]**
 
 **COM-3 — the component is router-free.** A component never knows the router: route state (search, params) arrives as props; navigation leaves as a callback (`onSelect`, `onOpenDetails`). The route is the only layer that wires those props to the router — including for navigating (see `04-routes-app-shell.md`). **[COM-3]**
 
-**COM-4 — prop conventions.** Data props are named after the entity (`user`, `users` — plural for arrays); callbacks are prefixed `on*` (`onSelect`, `onSubmit`, `onCancel`); state booleans are positive and unprefixed (`open`, `loading`, `disabled` — never `isOpen`/`isLoading`); control props and callbacks are optional when the component still renders safely (`open?`, `onOpenChange?`, `onSuccess?`) and are called with `?.` — entity props required to render stay mandatory. An absent optional callback does **not** hide the action nor short-circuit the render: visibility is a decision of permission, state or an explicit prop (see `12-security-permissions.md`). Slots take `ReactNode` (`header?: ReactNode`) or a render prop (`renderRow?: (row: T) => ReactNode`). **[COM-4]**
+**COM-4 — prop conventions.** Data props are named after the entity (`user`, `users` — plural for arrays); callbacks are prefixed `on*` (`onSelect`, `onSubmit`, `onCancel`); state booleans are positive and unprefixed (`open`, `loading`, `disabled` — never `isOpen`/`isLoading`); control props and callbacks are optional when the component still renders safely (`open?`, `onOpenChange?`, `onSuccess?`) and are called with `?.` — entity props required to render stay mandatory. An absent optional callback does **not** hide the action nor short-circuit the render — and neither do permission or state: an unavailable action renders inert with its reason (`ARC-ERR-9`, see `07-ui-states-and-feedback.md` and `12-security-permissions.md`). Removal from the surface is only ever an explicit product decision, never the fallout of a missing callback or a failed check. Slots take `ReactNode` (`header?: ReactNode`) or a render prop (`renderRow?: (row: T) => ReactNode`). **[COM-4]**
 
 **COM-5 — a wrapper derives from the primitive.** A business component that wraps a primitive derives its public props from the **primitive's exported type**, omitting only what it manages internally (`Omit`) — it never redeclares a parallel contract (`value`/`onChange`/`placeholder`/`disabled` by hand). This holds especially for entity selects: they inherit the contract of the library's `Select`, encapsulate options/loading/search, and support the `single` and `multiple` modes when the entity is naturally selected both ways. **[COM-5]**
 
@@ -44,9 +56,57 @@ generated hooks (see `02-sdk.md` and `05-forms.md`). **[COM-2]**
 
 **COM-7 — premature extraction is a bug too.** Zero or **one** trigger condition → inline is the right call. These stay inline: (1) trivial render — no mapping, fetch or fallback; (2) composition coupled to the parent's state; (3) page-specific composition that will not repeat; (4) UI-only visual rule that is not a domain concept; (5) one-off list with the entity already in scope. Purely presentational formatting (currency, document, copyable value) uses a **neutral** primitive from the library or from `src/ui/`, never a per-entity wrapper. **[COM-7]**
 
-**COM-8 — destructive confirmation is composed.** Confirming a destructive action composes the library's shared confirmation primitive — never a modal reassembled by hand; a typed-confirmation rule only if the product explicitly requires it. The failure of the confirmed action follows the feedback law (see `07-ui-states-and-feedback.md` and `11-error-handling.md`). **[COM-8]**
+**COM-8 — destructive confirmation is composed, and shows what it reaches.** Confirming a destructive action composes the library's shared confirmation primitive — never a modal reassembled by hand; a typed-confirmation rule only if the product explicitly requires it. When the action reaches other entities, the confirmation is the composed modal showing the **blast radius** read from the backend before the confirm is offered (`ARC-CON-11`, contract in `07-ui-states-and-feedback.md`) — the component never counts the impact itself. The failure of the confirmed action follows the feedback law (see `07-ui-states-and-feedback.md` and `11-error-handling.md`). **[COM-8]**
 
 **COM-9 — states are first-class.** Every component that renders asynchronous data handles loading, empty and error explicitly — happy-path-only does not ship. The full matrix of the five realities (loading/empty/error/partial/success) and mutation feedback are law in `07-ui-states-and-feedback.md`. **[COM-9]**
+
+**COM-10 — a field with a uniqueness rule becomes its own input component.** A
+field the backend constrains to be unique gets a `{Entity}{Field}Input`
+(`ProductNameInput`, `OrganizationSlugInput`, `UserEmailInput`) that owns the
+availability read, its states and the reason it renders. This extraction is
+**mandatory at the first occurrence**: it overrides the 2-of-3 trigger of
+`COM-6` and the "one-off stays inline" of `COM-7`, because what is being
+contained is not boilerplate but a **rule** — a domain constraint with two
+implementations is two rules, and the copy is the one that diverges the day the
+rule gains a condition.
+
+The verdict comes from the contract's availability read (`ARC-CTR-1`; endpoint
+standard is `turystack-backend-pattern` › `CTL-8`). A listing filtered in the
+consumer is never the check: it is the same defect `ARC-CON-11` names for a
+blast radius — the consumer re-deriving what the authority owns, silently, in
+the direction of under-reporting. A missing endpoint is a contract blocker
+(`ARC-CTR-5`), not a license to reconstruct the rule client-side.
+
+The read is **advisory and non-binding**: the constraint at the authority is
+what decides (`ARC-CON-4`), so the submit still handles the conflict code
+(`FRM-11`) and two people typing the same value at once stays an expected race,
+not a defect. Six consequences follow, in order:
+
+1. the value **always** leaves through `onChange`
+   (`turystack-frontend-primitives-pattern` › `PROP-7`). What an
+   unavailable value loses is its **validity**, never its emission — a
+   component that swallows the emission leaves the form holding the last
+   available value while the screen shows another, and the submit writes the
+   stale one in silence, which is a worse failure than the one the check was
+   built to prevent;
+2. the verdict leaves on its own channel, carrying the catalogue's `code` and
+   `message` (`ARC-ERR-2`, `ARC-ERR-6`) — never a sentence written inside the
+   component, which would drift from the one the write throws;
+3. the component renders its own reason inline (`ARC-ERR-9`), so it states the
+   block on its own and works outside a form;
+4. `checking` gates the submit exactly as a pending mutation does (`FRM-7`);
+   without it the user beats the debounce and submits before the verdict;
+5. a **failed** read is not a taken value. Unknown fails open and lets the
+   submit through, because refusing is the authority's job — the read has five
+   outcomes and `error` is not `success` carrying a `false` (`ARC-ERR-8`);
+6. in edit, the read excludes the record being edited, or every form collides
+   with itself.
+
+The counter-case is real and follows `COM-7`: when losing the submit costs the
+user nothing — a single-field form, a value retyped in two seconds — the
+conflict error on submit already says it, and the probe is premature extraction
+wearing a rule's clothes. The check earns its place when the submit carries work
+already done. **[COM-10]**
 
 **Stack lints (React/JSX/TS — they invert in another stack):**
 
@@ -56,21 +116,21 @@ generated hooks (see `02-sdk.md` and `05-forms.md`). **[COM-2]**
 
 ### Invariants (the law the gates enforce)
 
-> Bind by **id**. `constitutional` = portable invariant (holds in any stack). `stack lint` = exists only because of the current language's ergonomics and inverts in another stack — still id-registered and enforced here. The **detector** (how the gate catches the violation) is project-specific and lives in the 🛠️ part below.
 
-| ID | Law (one line) | Type | Detector (🛠️) |
-|---|---|---|---|
-| COM-1 | A business component lives in `features/{feature}/components/`; an external consumer imports only `features/{feature}/index.ts` | constitutional | Scenarios 1–2 / ❌ |
-| COM-2 | When there is an API, entity/query shapes come from the SDK; never redeclared; sliced on top of the imported type | constitutional | Scenarios 1, 3 / ❌ |
-| COM-3 | A component never imports `Route` and never navigates; it receives props and emits callbacks | constitutional | Scenario 2 / ❌ |
-| COM-4 | Data props named after the entity; `on*`; positive unprefixed booleans; optionals called with `?.`; an optional callback does not hide the action | constitutional | Scenarios 2, 4 / ❌ |
-| COM-5 | A wrapper derives its props from the primitive's exported type with `Omit`; never a parallel contract | constitutional | Scenario 3 / ❌ |
-| COM-6 | Recurring API-derived rendering (2-of-3 trigger) becomes a `{Entity}{Concern}` widget with its own hook + mapping | constitutional | Scenario 3 / ❌ |
-| COM-7 | Zero-or-one trigger condition → inline; five counter-cases; neutral formatting stays generic | constitutional | Scenario 5 / ❌ |
-| COM-8 | Destructive confirmation composes the shared `Confirm`; never a reassembled modal | constitutional | Scenario 4 / ❌ |
-| COM-9 | Explicit loading/empty/error in every component with asynchronous data | constitutional | Scenario 1 (law in `07-ui-states-and-feedback.md`) |
-| COM-L1 | An event prop in JSX takes a named function (`handle*`/reference); inline lambda banned | stack lint | Scenarios 2, 4 / ❌ |
-| COM-L2 | No `?? false`/`?? ''` when the target accepts `undefined` | stack lint | Scenarios 3–4 / ❌ |
+| ID | Law (one line) | Class | Gate | Detector (🛠️) |
+|---|---|---|---|---|
+| COM-1 | A business component lives in `features/{feature}/components/`; an external consumer imports only `features/{feature}/index.ts` | constitutional | `biome:noRestrictedImports` | Scenarios 1–2 / ❌ |
+| COM-2 | When there is an API, entity/query shapes come from the SDK; never redeclared; sliced on top of the imported type | constitutional | `gate:sdk-shadow` | Scenarios 1, 3 / ❌ |
+| COM-3 | A component never imports `Route` and never navigates; it receives props and emits callbacks | constitutional | `biome:noRestrictedImports` | Scenario 2 / ❌ |
+| COM-4 | Data props named after the entity; `on*`; positive unprefixed booleans; optionals called with `?.`; neither a missing callback nor a failed check removes the action | constitutional | `manual` | Scenarios 2, 4 / ❌ |
+| COM-5 | A wrapper derives its props from the primitive's exported type with `Omit`; never a parallel contract | constitutional | `gate:no-parallel-contract` | Scenario 3 / ❌ |
+| COM-6 | Recurring API-derived rendering (2-of-3 trigger) becomes a `{Entity}{Concern}` widget with its own hook + mapping | constitutional | `manual` | Scenario 3 / ❌ |
+| COM-7 | Zero-or-one trigger condition → inline; five counter-cases; neutral formatting stays generic | constitutional | `manual` | Scenario 5 / ❌ |
+| COM-8 | Destructive confirmation composes the shared `Confirm`; never a reassembled modal | constitutional | `gate:no-reassembled-confirm` | Scenario 4 / ❌ |
+| COM-9 | Explicit loading/empty/error in every component with asynchronous data | constitutional | `test:five-outcomes` | Scenario 1 (law in `07-ui-states-and-feedback.md`) |
+| COM-10 | A field with a uniqueness rule becomes a `{Entity}{Field}Input` owning the contract's availability read; advisory, fails open, emits value and verdict on separate channels | constitutional | `manual` | Scenario 6 / ❌ |
+| COM-L1 | An event prop in JSX takes a named function (`handle*`/reference); inline lambda banned | stack lint | `grit:no-inline-handler` | Scenarios 2, 4 / ❌ |
+| COM-L2 | No `?? false`/`?? ''` when the target accepts `undefined` | stack lint | `grit:no-redundant-fallback` | Scenarios 3–4 / ❌ |
 
 ---
 
@@ -95,12 +155,13 @@ generated hooks (see `02-sdk.md` and `05-forms.md`). **[COM-2]**
   permission → `<Protected permissionIds={[...]}>`.
 - **COM-2** — `import type { User } from '@/~sdk/users'`: always the main type (`User`, `Organization`), never `ListUsers200['data'][number]`. Same for listing params (`ListUsersQueryParams`). Slicing in the component's `.types.ts` (`User['status']`, `Pick<User, ...>`). Zod from `~sdk` with `standardSchemaResolver` when there is a form (see `05-forms.md`). Every read/write through the generated hooks (`useListUsers`, `useCreateUser`) — no `fetch`/`axios`; a symbol missing after `api:generate` is a backend blocker (see `02-sdk.md`).
 - **COM-3** — `createFileRoute`, `Route.useSearch`, `Route.useParams` and `useNavigate` from `@tanstack/react-router` exist **only** in `src/routes/` (see `04-routes-app-shell.md`). The route wires `onSelect` to a `navigate({ to: ... })`; the component never knows a router exists.
-- **COM-4** — alphabetical prop destructuring; `onDelete?.(user)` in the handler; the button renders even with `onDelete` `undefined` — what hides it is `<Protected>` or an explicit visibility prop. Slots typed `ReactNode` in the `.types.ts`.
+- **COM-4** — alphabetical prop destructuring; `onDelete?.(user)` in the handler; the button renders even with `onDelete` `undefined`. `<Protected>` does not remove it either — it renders it inert with the reason (see `12-security-permissions.md`); removal takes an explicit visibility prop and a product reason. Slots typed `ReactNode` in the `.types.ts`.
 - **COM-5** — the public type is born from `Omit<SelectProps<...>, 'loading' | 'optionGroup' | 'optionLabel' | 'optionValue' | 'options' | 'searchable'>`: the internal plumbing goes out, and `value`, `defaultValue`, `onChange`, `mode`, `placeholder`, `disabled`, `size` are **inherited**, never retyped (a single select clears via `value = null`). The same holds for any wrapper of a `@turystack/react-web` primitive (contracts in the `frontend-primitives-pattern` skill).
 - **COM-6** — `{Entity}{Concern}` naming: `UserStatus`, `UserAvatar`, `OrganizationSelect`, `RoleBadge`, `PaymentMethodIcon`. The widget calls its own SDK hook (`useListOrganizations`, `useGetUser`) and concentrates the mapping (`Record<Status, Variant>`); every consumer becomes a one-liner: `<UserStatus status={user.status} />`.
 - **COM-7** — the five counter-cases are in Scenario 5. Repeated presentational formatting (currency, document, copyable value) belongs in a neutral primitive from the library/`src/ui/` — do not create `InvoiceAmount` for what a generic currency primitive already solves.
-- **COM-8** — `Confirm` from `@turystack/react-web` controlled by `useDisclosure` from `@turystack/react-hooks`. The confirmed mutation's error shows `error.message` as it came (see `11-error-handling.md`); pending/toast feedback in `07-ui-states-and-feedback.md`.
+- **COM-8** — `Confirm` from `@turystack/react-web` controlled by `useDisclosure` from `@turystack/react-hooks` for the radius-free case; composed `Modal` + the SDK's impact hook when the write cascades (Scenario 7 of `07-ui-states-and-feedback.md`). The confirmed mutation's error shows `error.message` as it came (see `11-error-handling.md`); pending/toast feedback in `07-ui-states-and-feedback.md`.
 - **COM-9** — early returns in the order `isPending` → `error` → empty, with `Skeleton`/`Loader`, `Alert` and the empty message before the happy path. Full matrix, pagination by `meta.mode` and mutation feedback in `07-ui-states-and-feedback.md` and `02-sdk.md`.
+- **COM-10** — `src/features/products/components/product-name-input/`. Public type from `Omit<InputProps, 'debounce' | 'loading' | 'rightSection'>` (`COM-5`: only the plumbing it manages goes out — `value`, `defaultValue`, `onChange`, `placeholder`, `disabled`, `size` stay inherited), plus `excludeProductId?` and `onAvailabilityChange?: (availability: {Entity}{Field}Availability) => void`. The probe is `useGetProductAvailability` from `~sdk` with `query: { enabled }` — never `useListProducts` (see `CTL-8` in the backend skill). The debounce is on the **probe**, never on the emission: `useDebounceValue` from `@turystack/react-hooks` feeds the query's `value`, while `onChange` forwards the keystroke straight through (`Input`'s own `debounce` prop would delay the emission too — that is the swallowed-value failure of `COM-10`). Status is `idle | checking | available | taken`, and it is derived from the query, not stored in state (`ARC-CTR-7`); it reaches the parent through an effect keyed on the derived status, with `useEventCallback` stabilising the parent's handler — the verdict arrives from the network, so there is no interaction to hang it on, and an unstable handler identity would re-fire it on every parent render. `loading={status === 'checking'}` uses the `Input`'s own loader. Inside a form, the consumer maps `taken` to `setError(field, { message: reason.message })` and `available` to `clearErrors(field)`, and adds `checking` to the in-flight gate of `FRM-7` (see `05-forms.md`).
 - **COM-L1** — extract a `function handle*` in the component body; a named reference coming from a hook (`confirm.open`) is valid. A render `.map` and a `Table` column's `render` are not event props — they stay inline.
 - **COM-L2** — with `open?: boolean` on the primitive, `open={open}` passes straight through. `?? []` for a mandatory `options: Option[]` and `?? undefined` to convert `null` → `undefined` are intentional — allowed.
 
@@ -432,6 +493,146 @@ highlighted: (user) => daysSince(user.createdAt) < 7,
 </Flex>
 ```
 
+**Scenario 6 — uniqueness rule contained in one input component:** `[COM-2, COM-5, COM-10, COM-L1]`
+
+```tsx
+// src/features/products/components/product-name-input/product-name-input.types.ts
+import type { InputProps } from '@turystack/react-web'
+
+import type { Product } from '@/~sdk/products'
+
+export type ProductNameAvailabilityStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'taken'
+
+export type ProductNameAvailability = {
+  status: ProductNameAvailabilityStatus
+  // code + message come from the catalogue, never written here (ARC-ERR-2)
+  reason?: { code: string; message: string }
+}
+
+// COM-5: only the plumbing the component manages goes out;
+// value/defaultValue/onChange/placeholder/disabled/size stay inherited
+export type ProductNameInputProps = Omit<
+  InputProps,
+  'debounce' | 'loading' | 'rightSection'
+> & {
+  excludeProductId?: Product['productId']
+  onAvailabilityChange?: (availability: ProductNameAvailability) => void
+}
+```
+
+```tsx
+// src/features/products/components/product-name-input/product-name-input.tsx
+import { useDebounceValue, useEventCallback } from '@turystack/react-hooks'
+import { Input, Typography } from '@turystack/react-web'
+import { useEffect } from 'react'
+
+import { useGetProductAvailability } from '@/~sdk/products'
+
+import type {
+  ProductNameAvailability,
+  ProductNameInputProps,
+} from './product-name-input.types'
+
+export function ProductNameInput({
+  excludeProductId,
+  onAvailabilityChange,
+  onChange,
+  value,
+  ...props
+}: ProductNameInputProps) {
+  const [probe, setProbe] = useDebounceValue<string | null>(value ?? null, 400)
+
+  const { data, error, isFetching } = useGetProductAvailability(
+    { excludeProductId, field: 'name', value: probe ?? '' },
+    // COM-10: no probe with nothing typed, and none while the user is still typing
+    { query: { enabled: Boolean(probe) } },
+  )
+
+  function resolveStatus(): ProductNameAvailabilityStatus {
+    if (!probe) {
+      return 'idle'
+    }
+    if (isFetching) {
+      return 'checking'
+    }
+    // COM-10: a FAILED probe is not a taken value — unknown fails open,
+    // the backend constraint is what refuses (ARC-CON-4, ARC-ERR-8)
+    if (error || !data) {
+      return 'idle'
+    }
+    return data.available ? 'available' : 'taken'
+  }
+
+  const status = resolveStatus()
+  const reason = status === 'taken' ? data?.reason : undefined
+
+  // the verdict arrives from the network, not from an interaction, so the effect is
+  // the honest channel; useEventCallback keeps the parent's handler identity stable,
+  // which is what stops the notification from re-firing on every parent render
+  const emitAvailability = useEventCallback(onAvailabilityChange)
+
+  useEffect(() => {
+    emitAvailability?.({ reason, status })
+  }, [emitAvailability, reason, status])
+
+  function handleChange(next: string | null) {
+    // COM-10: the value ALWAYS leaves; what an unavailable value loses is
+    // validity, never the emission (PROP-7)
+    onChange?.(next)
+    setProbe(next)
+  }
+
+  return (
+    <>
+      <Input
+        {...props}
+        loading={status === 'checking'}
+        onChange={handleChange}
+        value={value}
+      />
+      {/* the component states the block on its own, so it works outside a form (ARC-ERR-9) */}
+      {reason && <Typography variant="caption">{reason.message}</Typography>}
+    </>
+  )
+}
+```
+
+```tsx
+// src/features/products/components/product-form/product-form.tsx — the form maps the verdict
+// to its own error channel and adds `checking` to the in-flight gate (FRM-7)
+const [availability, setAvailability] = useState<ProductNameAvailability>({
+  status: 'idle',
+})
+
+function handleAvailabilityChange(next: ProductNameAvailability) {
+  setAvailability(next)
+
+  if (next.status === 'taken' && next.reason) {
+    // message as it came from the catalogue — never rewritten (FRM-11)
+    form.setError('name', { message: next.reason.message })
+    return
+  }
+
+  // cleared only on a confirmed `available`: clearing on idle/checking would wipe
+  // the schema's own error for the field
+  if (next.status === 'available') {
+    form.clearErrors('name')
+  }
+}
+
+const submitting =
+  form.formState.isSubmitting ||
+  createProduct.isPending ||
+  availability.status === 'checking'
+```
+
+> The submit still handles the conflict code the write throws (`FRM-11`): the
+> probe narrows the window, it never closes it (`ARC-CON-4`).
+
 ## Client state ownership
 
 Choose the owner before creating state:
@@ -516,14 +717,21 @@ export function UserEmail({ user }: UserEmailProps) {
 ```
 
 ```tsx
-// ❌ [COM-4] optional callback hiding the action — visibility is the job of <Protected>/an explicit prop
+// ❌ [COM-4] optional callback removing the action — it renders, and it fires with ?.
 {onEdit && <Button onClick={handleEdit}>Edit</Button>}
+
+// ❌ [COM-4] permission/state removing the action — the law is inert + reason (ARC-ERR-9)
+{canDelete && <Button onClick={handleDelete}>Delete</Button>}
 
 // ❌ [COM-8] modal reassembled by hand for a destructive confirmation — compose <Confirm />
 <Modal open={confirm.opened}>
   <span>Are you sure?</span>
   <Button onClick={handleDelete}>Delete</Button>
 </Modal>
+
+// ❌ [COM-8] cascading deletion confirmed on the entity's name alone — the radius
+// has to be read from the backend and shown BEFORE the confirm (ARC-CON-11)
+<Confirm description="This action cannot be undone." onConfirm={handleDelete} title="Delete team?" />
 
 // ❌ [COM-1] route/another feature importing users internals
 import { UserCard } from '@/features/users/components/user-card/user-card'
@@ -537,4 +745,36 @@ useEffect(() => setOrders(query.data ?? []), [query.data])
 
 // ❌ recreating a hook already available in the library
 export function useToggle() {}
+```
+
+```tsx
+// ❌ [COM-10] uniqueness rebuilt from a listing — a second implementation of the
+// constraint, which diverges the first time the rule gains a condition
+const { data } = useListProducts({ name })
+const taken = (data?.data.length ?? 0) > 0
+
+// ❌ [COM-10] the emission swallowed when the value is taken — the form keeps the last
+// available value while the screen shows another, and the submit writes the stale one
+function handleChange(next: string | null) {
+  if (taken) {
+    return
+  }
+  onChange?.(next)
+}
+
+// ❌ [COM-10] a failed probe read as "taken" — a dead network blocks a submit
+// the backend would have accepted
+const taken = Boolean(error) || data?.available === false
+
+// ❌ [COM-10] reason written in the component — it drifts from what the write throws
+setError('name', { message: 'This name is already in use.' })
+
+// ❌ [COM-10] no `checking` in the in-flight gate — the user beats the debounce
+const submitting = form.formState.isSubmitting || createProduct.isPending
+
+// ❌ [COM-10] edit form probing without excluding itself — it collides with its own record
+useGetProductAvailability({ field: 'name', value: probe })
+
+// ❌ [COM-10] the rule inlined in the form because "it only happens here" — COM-7 does not
+// apply to a domain constraint; the extraction is mandatory at the first occurrence
 ```

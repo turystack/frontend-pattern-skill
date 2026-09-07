@@ -2,11 +2,26 @@
 
 **Concept.** The route is the sole owner of the router: it declares `Route`, validates search params and translates navigation into callbacks. The page is thin — it extracts router state, wires callbacks and renders business components; data never travels through a loader, always through the SDK hooks inside the components.
 
-> **How to read this file.** Two parts, deliberately separated:
-> - **🌐 Generic pattern** — the **portable law**. Holds in any stack (React, Vue, etc.); the text stays true even after swapping frameworks. This is what review enforces as an invariant.
-> - **🛠️ Project-specific** — the **code** that implements each rule in the current stack (TypeScript · React · TanStack · @turystack). Swapping stacks rewrites **only** this part; the law above does not change.
->
-> Each rule carries an id `RTE-n` linking the law (generic) to the code (specific). Gates bind by **id**, not by file/line. `RTE-L*` rules are **stack lints**: they exist only because of the current language's ergonomics (they invert in another stack), but they stay id-registered and enforced in this project.
+> **How to read this file.** 🌐 Generic pattern is the portable law; 🛠️
+> Project-specific is that same law expressed as code in TypeScript · React ·
+> TanStack · @turystack. The split, `XXX-n` versus `XXX-Ln`, and why an
+> `ARC-…` law is cited and never restated: `turystack-frontend-pattern` › *How
+> a section is written*.
+
+## In this file
+
+- [🌐 Generic pattern (portable — stack-independent)](#generic-pattern-portable-stack-independent)
+  - [Invariants (the law the gates enforce)](#invariants-the-law-the-gates-enforce)
+- [Governed by the constitution](#governed-by-the-constitution)
+- [🛠️ Project-specific (TypeScript · React · TanStack · @turystack)](#project-specific-typescript-react-tanstack-turystack)
+  - [✅ How to do it](#how-to-do-it)
+- [App shell and providers](#app-shell-and-providers)
+  - [❌ Never do](#never-do)
+
+**Rules defined here:** `RTE-1` · `RTE-2` · `RTE-3` · `RTE-4` · `RTE-6` · `RTE-7` · `RTE-8` · `RTE-9` · `RTE-L1` — the law itself is the *Invariants* table below; every ❌ item cites the id it violates.
+
+**Retired ids:** `RTE-5` — retired, not renumbered. A review or commit citing
+one points at a rule that no longer exists; the number is never reused.
 
 ---
 
@@ -26,6 +41,10 @@
 
 **RTE-6 — the search goes down whole.** When a component consumes the same shape returned by the route's search, pass the complete object (`params={search}`, `value={search}`) — never rebuild an identical object field by field. **[RTE-6]**
 
+**ARC-DEL-9 — a resource opened over the page lives in the address.** Any page that opens a sheet/modal/detail panel for one record keeps that record's identity in the address, and the surface derives from the address — never from a local boolean fed by the click. Opening is navigation, closing is navigation. Entering with the identity already present rebuilds the surface without a click; an identity that does not resolve is a decided outcome, never a blank overlay. **[ARC-DEL-9]**
+
+**RTE-9 — `resourceId` + a deep-link component, on every page with an overlay.** The route's search schema declares the optional key `resourceId`; the page reads it and passes it down, and the feature exposes a `{Entity}DeepLink` component that resolves the id and opens the surface. It reacts to the key **declaratively** — the fetch is enabled by the presence of `resourceId` and `open` derives from the same value; no `useEffect` ever opens a surface. Opening emits `onOpen(resource)` → the route navigates adding `resourceId`; closing emits `onClose` → the route navigates removing it. The overlay's `open` is derived (`open={resourceId === entity.id}`), never a `useState` the click sets — two sources for one fact drift on the first back button. Resolution failure follows the five states (see 07-ui-states-and-feedback.md): pending → the overlay opens in loading; not-found/denied → a stated reason; never a blank sheet. **[RTE-9]**
+
 **RTE-7 — authentication gate in the pathless layout's `beforeLoad`.** Authentication denies at the route's entrance (redirect to login), in the pathless layout that groups the authenticated pages — never inside a child component. Denial by **permission** follows the same mechanism — the law lives in 12-security-permissions.md. **[RTE-7]**
 
 **RTE-8 — an authenticated page renders the `Page` wrapper.** Every page in the authenticated group mounts the standard chrome: header with breadcrumbs (Dashboard is the only exception), title/description in a vertical group and actions on the right; optional toolbar for filters; content area. Product consistency is not optional per page. **[RTE-8]**
@@ -34,30 +53,31 @@
 
 ### Invariants (the law the gates enforce)
 
-> Bind by **id**. `constitutional` = portable invariant (holds in any stack). `stack lint` = exists only because of the current language's ergonomics and inverts in another stack — still id-registered and enforced here. The **detector** (how the gate catches the violation) is project-specific and lives in the 🛠️ part below.
 
-| ID | Law (one line) | Type | Detector (🛠️) |
-|---|---|---|---|
-| RTE-1 | Only the route file declares `Route` and reads search/params/navigate; components receive values + callbacks | constitutional | Scenarios 1–4 / ❌ |
-| RTE-2 | Route tree declarative by file; `routeTree.gen.ts` generated, never edited | constitutional | Scenarios 2–3 / ❌ |
-| RTE-3 | Search validated by schema; a page that mirrors a list endpoint uses the `~sdk` schema; inline only for a UI-local param | constitutional | Scenarios 1, 4 / ❌ |
-| RTE-4 | No `loader`/`useLoaderData` for data; components fetch via SDK hooks | constitutional | Scenario 2 / ❌ |
-| RTE-6 | Search goes down whole (`params={search}`); never rebuilt field by field | constitutional | Scenario 1 / ❌ |
-| RTE-7 | Authentication gate in a pathless layout's `beforeLoad`; never in a child component | constitutional | Scenario 3 / ❌ |
-| RTE-8 | An `_app` page renders `Page` (`Page.Header` with breadcrumbs — Dashboard excepted —, `Page.Toolbar` optional, `Page.Content`) | constitutional | Scenarios 1–2, 4 |
-| RTE-L1 | Named `Route` export; default export banned | stack lint | ❌ |
+| ID | Law (one line) | Class | Gate | Detector (🛠️) |
+|---|---|---|---|---|
+| RTE-1 | Only the route file declares `Route` and reads search/params/navigate; components receive values + callbacks | constitutional | `biome:noRestrictedImports` | Scenarios 1–4 / ❌ |
+| RTE-2 | Route tree declarative by file; `routeTree.gen.ts` generated, never edited | constitutional | `gate:generated-untouched` | Scenarios 2–3 / ❌ |
+| RTE-3 | Search validated by schema; a page that mirrors a list endpoint uses the `~sdk` schema; inline only for a UI-local param | constitutional | `gate:search-schema` | Scenarios 1, 4 / ❌ |
+| RTE-4 | No `loader`/`useLoaderData` for data; components fetch via SDK hooks | constitutional | `grit:no-route-loader-data` | Scenario 2 / ❌ |
+| RTE-6 | Search goes down whole (`params={search}`); never rebuilt field by field | constitutional | `manual` | Scenario 1 / ❌ |
+| RTE-7 | Authentication gate in a pathless layout's `beforeLoad`; never in a child component | constitutional | `gate:auth-gate-placement` | Scenario 3 / ❌ |
+| RTE-8 | An `_app` page renders `Page` (`Page.Header` with breadcrumbs — Dashboard excepted —, `Page.Toolbar` optional, `Page.Content`) | constitutional | `manual` | Scenarios 1–2, 4 |
+| RTE-9 | A page with an overlay declares `resourceId` in the search and mounts `{Entity}DeepLink`; `open` derived from the search, open/close via `navigate` | constitutional | `gate:deep-link` | Scenario 5 / ❌ |
+| RTE-L1 | Named `Route` export; default export banned | stack lint | `gate:no-default-export-route` | ❌ |
 
 ## Governed by the constitution
 
-These laws live in `tury-stack-architecture-pattern` and are not restated here.
+These laws live in `turystack-architecture-pattern` and are not restated here.
 What follows in this section is how the Turystack frontend expresses them.
 
-| ID | Law |
-|---|---|
-| `ARC-DEL-1` | A delivery boundary is thin: it translates, validates shape, delegates. |
-| `ARC-DEL-8` | State that survives a reload, a link or history lives in the address. |
-| `ARC-CTR-1` | The contract is the single source — the search schema derives from it (`RTE-3`). |
-| `ARC-SEC-2` | The backend revalidates; the route gate is experience (`RTE-7`). |
+| ID | Law | How this stack expresses it |
+|---|---|---|
+| `ARC-DEL-1` | A delivery boundary is thin: it translates, validates shape, delegates. | the route reads params/search and passes values down; it holds no rule |
+| `ARC-DEL-8` | State that survives a reload, a link or history lives in the address. | filters, pagination and tab selection live in the search, not in `useState` |
+| `ARC-DEL-9` | The identity of a resource opened over the page lives in the address and rebuilds the surface on entry (`RTE-9`). | `resourceId` in the search plus `{Entity}DeepLink` rebuilds the overlay on entry (`RTE-9`) |
+| `ARC-CTR-1` | The contract is the single source — the search schema derives from it (`RTE-3`). | the search schema derives from the `~sdk` schema of the list endpoint (`RTE-3`) |
+| `ARC-SEC-2` | The backend revalidates; the route gate is experience (`RTE-7`). | `beforeLoad` shapes the experience; the backend `403` is the protection (`RTE-7`) |
 
 The route is a delivery boundary like a controller or a handler: it receives an
 envelope (path, search, fragment), validates shape, extracts values and
@@ -84,7 +104,8 @@ file declares the route, where the schema comes from, where the gate sits.
 - **ARC-DEL-1** — the `component:` extracts (`Route.useSearch/useParams`), wires (`handleSelect` → `navigate`), renders (`<UserList />`). Domain markup lives in `features/{feature}/components/`; the route imports only `@/features/{feature}`.
 - **RTE-6** — a toolbar and a list that consume the search shape receive the complete object: `value={search}` / `params={search}` (the toolbar's full contract — see 06-data-surfaces.md).
 - **RTE-7** — the `beforeLoad` of `_app.tsx` checks the session via `@/auth` (see 01-project-structure.md) and throws `redirect({ to: '/login' })`. Denial by permission uses `hasPermissions` in the specific route's `beforeLoad` — see 12-security-permissions.md.
-- **RTE-8** — `Page` is an app-local primitive in `src/ui/page/` (see 03-components-client-state.md): `Page.Header` with `breadcrumbs`, `Page.Title` (title + description), actions on the right; `Page.Toolbar` for filters; `Page.Content` for the body.
+- **ARC-DEL-9 / RTE-9** — the search schema composes the SDK's with the UI-local key: `listUsersQueryParamsSchema.extend({ resourceId: z.string().optional() })` — an extension of the contract's schema, never a parallel one (`RTE-3`). The route wires `handleOpenUser` → `navigate({ search: { ...search, resourceId: user.userId } })` and `handleCloseUser` → `navigate({ search: { ...search, resourceId: undefined } })`; both go through the whole object (`RTE-6`). The `{Entity}DeepLink` lives in `features/{feature}/components/{entity}-deep-link/` and holds the SDK query with `enabled: Boolean(resourceId)` — TanStack Query itself is the first-render mechanism, so there is no `useEffect`, no `useRef` and no mount flag anywhere in the path. Because entry by address can happen with the record outside the loaded page, the deep-link surface **always fetches by id** (`TBL-6`).
+- **RTE-8** — `Page` ships in `@turystack/react-web`, promoted out of `src/ui/page/` once every app was writing the same four parts (`COM-1`: extend the library before creating a local primitive). `Page.Header` takes `breadcrumbs`, `icon`, `title`, `description` and `action` — its arrangement is fixed, so it is the only part with props; `Page.Toolbar` for filters and `Page.Content` for the body take children.
 - **RTE-L1** — the tree generator resolves the named `Route` export; a default export does not exist in the app.
 
 **Tree structure:**
@@ -116,7 +137,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { listUsersQueryParamsSchema } from '@/~sdk/users'
 import type { ListUsersQueryParams, User } from '@/~sdk/users'
 import { UserList, UsersToolbar } from '@/features/users'
-import { Page } from '@/ui/page'
+import { Page } from '@turystack/react-web'
 
 export const Route = createFileRoute('/_app/users')({
   component: UsersPage,
@@ -137,9 +158,11 @@ function UsersPage() {
 
   return (
     <Page>
-      <Page.Header breadcrumbs={[{ label: 'Users' }]}>
-        <Page.Title description="Manage access and profiles." title="Users" />
-      </Page.Header>
+      <Page.Header
+        breadcrumbs={[{ label: 'Users' }]}
+        description="Manage access and profiles."
+        title="Users"
+      />
       <Page.Toolbar>
         {/* RTE-6: the search goes down whole — the toolbar does not know Route exists */}
         <UsersToolbar onSearchChange={handleSearchChange} value={search} />
@@ -160,7 +183,7 @@ The components see plain values and callbacks (`onSearchChange`, `onSelect`) —
 import { createFileRoute } from '@tanstack/react-router'
 
 import { UserDetail } from '@/features/users'
-import { Page } from '@/ui/page'
+import { Page } from '@turystack/react-web'
 
 export const Route = createFileRoute('/_app/users/$userId')({
   component: UserDetailPage,
@@ -171,9 +194,10 @@ function UserDetailPage() {
 
   return (
     <Page>
-      <Page.Header breadcrumbs={[{ label: 'Users', to: '/users' }, { label: 'Details' }]}>
-        <Page.Title title="User details" />
-      </Page.Header>
+      <Page.Header
+        breadcrumbs={[{ href: '/users', label: 'Users' }, { label: 'Details' }]}
+        title="User details"
+      />
       <Page.Content>
         {/* RTE-4: no loader — UserDetail calls useGetUser({ userId }) from ~sdk
             and handles its own loading/empty/error (see 07-ui-states-and-feedback.md) */}
@@ -217,7 +241,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { SettingsTabs } from '@/features/settings'
-import { Page } from '@/ui/page'
+import { Page } from '@turystack/react-web'
 
 const settingsSearchSchema = z.object({
   tab: z.enum(['profile', 'notifications']).catch('profile'),
@@ -238,9 +262,7 @@ function SettingsPage() {
 
   return (
     <Page>
-      <Page.Header breadcrumbs={[{ label: 'Settings' }]}>
-        <Page.Title title="Settings" />
-      </Page.Header>
+      <Page.Header breadcrumbs={[{ label: 'Settings' }]} title="Settings" />
       <Page.Content>
         <SettingsTabs onTabChange={handleTabChange} tab={tab} />
       </Page.Content>
@@ -248,6 +270,96 @@ function SettingsPage() {
   )
 }
 ```
+
+**Scenario 5 — list page with a deep-linked sheet:** `[ARC-DEL-9, RTE-9, RTE-3, RTE-6, ARC-DEL-1]`
+```tsx
+// src/routes/_app/users.tsx — resourceId extends the SDK schema; open/close are navigation
+import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
+
+import { listUsersQueryParamsSchema } from '@/~sdk/users'
+import type { User } from '@/~sdk/users'
+import { UserDeepLink, UserList, UsersToolbar } from '@/features/users'
+import { Page } from '@turystack/react-web'
+
+const usersSearchSchema = listUsersQueryParamsSchema.extend({
+  resourceId: z.string().optional(), // UI-local key ON TOP of the contract's schema
+})
+
+export const Route = createFileRoute('/_app/users')({
+  component: UsersPage,
+  validateSearch: (raw) => usersSearchSchema.parse(raw),
+})
+
+function UsersPage() {
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+
+  function handleSelect(user: User) {
+    navigate({ search: { ...search, resourceId: user.userId } }) // opening IS navigation
+  }
+
+  function handleClose() {
+    navigate({ search: { ...search, resourceId: undefined } }) // closing IS navigation
+  }
+
+  return (
+    <Page>
+      <Page.Header breadcrumbs={[{ label: 'Users' }]} title="Users" />
+      <Page.Content>
+        <UserList onSelect={handleSelect} params={search} />
+        {/* the sheet is not rendered by the row: it is a function of the address */}
+        <UserDeepLink onClose={handleClose} resourceId={search.resourceId} />
+      </Page.Content>
+    </Page>
+  )
+}
+```
+```tsx
+// src/features/users/components/user-deep-link/user-deep-link.types.ts
+export type UserDeepLinkProps = {
+  resourceId?: string
+  onClose: () => void
+}
+```
+```tsx
+// src/features/users/components/user-deep-link/user-deep-link.tsx
+import { useGetUser } from '@/~sdk/users'
+
+import { UserDetailsSheet } from '@/features/users/components/user-details-sheet'
+
+import type { UserDeepLinkProps } from './user-deep-link.types'
+
+export function UserDeepLink({ onClose, resourceId }: UserDeepLinkProps) {
+  // enabled = the first-render mechanism. No useEffect, no mount flag
+  const { data: user, error, isPending } = useGetUser(
+    { userId: resourceId ?? '' },
+    { query: { enabled: Boolean(resourceId) } },
+  )
+
+  function handleChange(open: boolean) {
+    if (!open) {
+      onClose() // the sheet never closes itself: it asks the route to navigate
+    }
+  }
+
+  return (
+    // open DERIVES from the address — there is no local boolean to drift
+    <UserDetailsSheet
+      error={error}
+      loading={isPending}
+      onChange={handleChange}
+      open={Boolean(resourceId)}
+      user={user}
+    />
+  )
+}
+```
+
+A link to `/users?status=active&resourceId=u_42` opens the filtered list **with
+the sheet open**, for whoever receives it. Back closes the sheet, F5 keeps it,
+and neither behavior needed a line of code — both fall out of the address being
+the only source.
 
 ## App shell and providers
 
@@ -271,19 +383,36 @@ import type { DefaultLayoutProps } from './default-layout.types'
 
 export function DefaultLayout({ children }: DefaultLayoutProps) {
   return (
-    <Layout withSidebar>
-      <Layout.Header bordered>{/* product navigation */}</Layout.Header>
-      <Layout.Main>
-        <Layout.Content>{children}</Layout.Content>
-      </Layout.Main>
-    </Layout>
+    <Layout.Sidebar.Provider>
+      <Layout.Sidebar collapsible="icon">
+        <Layout.Sidebar.Header>
+          {/* the toggle belongs to the rail, never to the page header */}
+          <Layout.Sidebar.Brand action={<Layout.Sidebar.Trigger />}>
+            {productName}
+          </Layout.Sidebar.Brand>
+        </Layout.Sidebar.Header>
+        {/* product navigation */}
+      </Layout.Sidebar>
+
+      {/* No flag: beside a rail the shell reads the sidebar context and
+          becomes the content pane itself. Layout.Main is the only <main>.
+          `padding` is the step the header, content and footer share. */}
+      <Layout padding="md">
+        <Layout.Header bordered />
+        <Layout.Main>
+          <Layout.Content>{children}</Layout.Content>
+        </Layout.Main>
+      </Layout>
+    </Layout.Sidebar.Provider>
   )
 }
 ```
 
-On mobile, the same `DefaultLayout` composes `Layout` from
-`@turystack/react-mobile`; `src/app/(app)/_layout.tsx` only selects it and
-renders `Slot`/`Stack` inside it.
+On mobile the shell is the same idea and not the same tree:
+`@turystack/react-mobile` ships no rail, so its `Layout` still takes a
+`withSidebar` flag and `DefaultLayout` is written per platform.
+`src/app/(app)/_layout.tsx` only selects it and renders `Slot`/`Stack` inside
+it.
 
 ### ❌ Never do
 
@@ -324,4 +453,35 @@ function UsersPage() {
 
 // ❌ [RTE-L1] default export — the generator consumes the named `Route` export
 export default function UsersPage() {}
+```
+
+```tsx
+// ❌ [ARC-DEL-9] the open record living in memory — F5, share and back all lose it
+function UsersPage() {
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+
+  return (
+    <>
+      <UserList onSelect={setSelectedUser} params={search} />
+      <UserDetailsSheet open={Boolean(selectedUser)} user={selectedUser} />
+    </>
+  )
+}
+
+// ❌ [RTE-9] two sources for one fact — the address says one thing, the state another
+const [open, setOpen] = useState(false)
+useEffect(() => {
+  if (search.resourceId) {
+    setOpen(true) // an effect mirroring the address: it drifts on the first back button
+  }
+}, [search.resourceId])
+
+// ❌ [RTE-9] a parallel schema for resourceId instead of extending the contract's (RTE-3)
+validateSearch: (raw) => z.object({ resourceId: z.string().optional() }).parse(raw)
+
+// ❌ [RTE-9] the sheet closing itself — closing is navigation, so it belongs to the route
+<Sheet onChange={setOpen} open={open} />
+
+// ❌ [RTE-9] deep link resolved from the loaded list — the record may be on another page
+const user = users.find((item) => item.userId === search.resourceId)
 ```

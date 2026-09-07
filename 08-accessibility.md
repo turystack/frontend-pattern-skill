@@ -2,13 +2,17 @@
 
 **Concept.** Accessibility is not final polish — keyboard, screen reader and focus are part of the contract of every interactive element, in every layer. Half the law is mechanical (a11y lint + axe in component tests); the rest is review judgment about focus and motion.
 
-> **How to read this file.** Two parts, deliberately separated:
-> - **🌐 Generic pattern** — the **portable law**. Holds in any stack (React, Vue, etc.); the text stays true even after swapping frameworks. This is what review enforces as an invariant.
-> - **🛠️ Project-specific** — the **code** that implements each rule in the current stack (TypeScript · React · TanStack · @turystack). Swapping stacks rewrites **only** this part; the law above does not change.
->
-> Each rule carries an id `ACC-n` linking the law (generic) to the code (specific). Gates bind by **id**, not by file/line. `ACC-L*` rules are **stack lints**: they exist only because of the current language's ergonomics (they invert in another stack), but they stay id-registered and enforced in this project.
+> **How to read this file.** 🌐 Generic pattern is the portable law; 🛠️
+> Project-specific is that same law expressed as code in TypeScript · React ·
+> TanStack · @turystack. The split, `XXX-n` versus `XXX-Ln`, and why an
+> `ARC-…` law is cited and never restated: `turystack-frontend-pattern` › *How
+> a section is written*.
 
 ---
+
+**Rules defined here:** `ACC-1` · `ACC-2` · `ACC-3` · `ACC-4` · `ACC-5` ·
+`ACC-6` · `ACC-8` · `ACC-7` — the law is the *Invariants* table below; every ❌
+item cites the id it violates.
 
 ## 🌐 Generic pattern (portable — stack-independent)
 
@@ -24,21 +28,23 @@
 
 **ACC-6 — motion respects `prefers-reduced-motion`.** Every non-essential animation reduces or turns off when the user asked for less motion. **[ACC-6]**
 
+**ACC-8 — an inert control's reason is reachable without a mouse.** A control disabled with a stated reason (`UST-8`) only satisfies the law if the reason reaches everyone: the tooltip hangs off a focusable wrapper (a disabled control takes no focus and fires no pointer event), and the reason is bound as the control's accessible description — not as a visual-only tooltip and never as a bare `title`. The test is blunt: reaching the control by keyboard has to surface the reason. **[ACC-8]**
+
 **ACC-7 — clean axe as the mechanical floor.** A component test of an interactive surface runs axe and passes with no violations. The mechanical floor does not replace ACC-5 (focus is judgment above the lint), but nothing ships below it. **[ACC-7]**
 
 ### Invariants (the law the gates enforce)
 
-> Bind by **id**. `constitutional` = portable invariant (holds in any stack). `stack lint` = exists only because of the current language's ergonomics and inverts in another stack — still id-registered and enforced here. The **detector** (how the gate catches the violation) is project-specific and lives in the 🛠️ part below.
 
-| ID | Law (one line) | Type | Detector (🛠️) |
-|---|---|---|---|
-| ACC-1 | Every interactive element has an accessible name; icon-only demands an explicit name | constitutional | Scenarios 1, 3 / ❌ |
-| ACC-2 | Click/keyboard live in a real control (button, link, menu item); never `div`/`span` with a handler | constitutional | Scenario 1 / ❌ |
-| ACC-3 | Every input programmatically associated with a label; a placeholder is not a label | constitutional | Scenario 2 / ❌ |
-| ACC-4 | Positive `tabindex` banned; focus order = document order | constitutional | ❌ |
-| ACC-5 | An overlay traps focus, opens at a predictable point and restores to the trigger on close | constitutional | Scenario 3 / ❌ |
-| ACC-6 | Non-essential motion respects `prefers-reduced-motion` | constitutional | ❌ |
-| ACC-7 | An interactive surface passes axe clean in a component test | constitutional | (mechanics in 13-testing.md) |
+| ID | Law (one line) | Class | Gate | Detector (🛠️) |
+|---|---|---|---|---|
+| ACC-1 | Every interactive element has an accessible name; icon-only demands an explicit name | constitutional | `test:axe-clean` | Scenarios 1, 3 / ❌ |
+| ACC-2 | Click/keyboard live in a real control (button, link, menu item); never `div`/`span` with a handler | constitutional | `biome:a11y` | Scenario 1 / ❌ |
+| ACC-3 | Every input programmatically associated with a label; a placeholder is not a label | constitutional | `biome:a11y` | Scenario 2 / ❌ |
+| ACC-4 | Positive `tabindex` banned; focus order = document order | constitutional | `biome:a11y` | ❌ |
+| ACC-5 | An overlay traps focus, opens at a predictable point and restores to the trigger on close | constitutional | `manual` | Scenario 3 / ❌ |
+| ACC-6 | Non-essential motion respects `prefers-reduced-motion` | constitutional | `manual` | ❌ |
+| ACC-8 | The reason of an inert control is focusable-reachable and bound as its accessible description | constitutional | `test:denial-visible` | ❌ (law in 07-ui-states-and-feedback.md) |
+| ACC-7 | An interactive surface passes axe clean in a component test | constitutional | `test:axe-clean` | (mechanics in 13-testing.md) |
 
 ---
 
@@ -50,12 +56,13 @@
 
 **Mechanisms per rule:**
 
-- **ACC-1** — the primary source of the accessible name is the control's **visible text** (`<Button>Edit</Button>`, `leftSection` + label). An icon-only control (`size="icon-*"`) needs the explicit name: wrap it with `Tooltip content="…"` (the visible affordance) and guarantee the accessible name — if the `Button` from `@turystack/react-web` does not yet expose a name channel for icon-only, that is a gap to close in the lib (UIP-4, see 03-components-client-state.md), never ship an icon-only button with no name. Icons (`lucide-react`) inside a primitive are decorative — the name comes from the text/Tooltip, never from the icon.
+- **ACC-1** — the primary source of the accessible name is the control's **visible text** (`<Button>Edit</Button>`, `leftSection` + label). An icon-only control (`size="icon-*"`) needs the explicit name: wrap it with `Tooltip content="…"` (the visible affordance) and guarantee the accessible name — if the `Button` from `@turystack/react-web` does not yet expose a name channel for icon-only, that is a gap to close in the lib (`COM-5`, see 03-components-client-state.md, and `07-consumption.md` in `turystack-frontend-primitives-pattern`), never ship an icon-only button with no name. Icons (`lucide-react`) inside a primitive are decorative — the name comes from the text/Tooltip, never from the icon.
 - **ACC-2** — composing the react-web inventory (`Button variant="ghost"`, `DropdownMenu.Item`, `Tabs`) delivers semantics, focus and keyboard for free. A clickable `div` is a double violation: of ACC-2 and of the composition law (raw HTML where a primitive exists — see 03-components-client-state.md).
 - **ACC-3** — `Form.Field` with `name` + `label` wires `htmlFor` to the registered input automatically (see 05-forms.md); a field outside a form uses an explicit `Label htmlFor`. Placeholder copy has its own law in 09-content-i18n.md.
 - **ACC-4** — Biome's a11y domain (`@turystack/frontend-config`) flags positive `tabindex`; the fix is always to reorder the JSX.
 - **ACC-5** — react-web's `Modal`, `Sheet`, `DropdownMenu` and `Popover` already implement trap + restore (Radix underneath). In the app: dismissible always through those primitives, never a positioned `div`; zero manual focus management (`document.querySelector(...).focus()`, competing `autoFocus`) on top of the primitive.
 - **ACC-6** — animation lives inside the primitives' `tv()`, and every motion has a `motion-reduce:` counterpart. Missing counterpart in a lib primitive → extend the lib (skill `frontend-primitives-pattern`); an app-local primitive in `src/ui/` follows the same rule in its own `tv()`.
+- **ACC-8** — `<Tooltip content={blockedReason}><span tabIndex={0}><Button disabled … /></span></Tooltip>`: the `span` is what receives focus and hover, since `disabled:pointer-events-none` in the primitive's `tv()` blocks both on the button itself. The reason must also land in the accessible description (`aria-describedby` pointing at the tooltip content) — if react-web's `Tooltip` does not yet wire that for a disabled child, it is a gap to close in the lib (see 03-components-client-state.md), never a `title` attribute.
 - **ACC-7** — the component test renders the surface and runs axe with no violations; setup, scope and tooling in 13-testing.md.
 
 ### ✅ How to do it

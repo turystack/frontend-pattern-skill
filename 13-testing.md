@@ -1,12 +1,22 @@
 # Testing
 
-**Concept.** Two levels by the nature of the test: **unit** (pure logic — `support` utilities, hooks, mappers) and **component** (render + interaction as the user sees and uses it: role, accessible name, user-event). The component level gives teeth to this constitution's UX laws: render smoke, the five states, permission as absence in the DOM, clean `axe`. A test asserts the **observable contract** — never the implementation.
+**Concept.** Two levels by the nature of the test: **unit** (pure logic — `support` utilities, hooks, mappers) and **component** (render + interaction as the user sees and uses it: role, accessible name, user-event). The component level gives teeth to this constitution's UX laws: render smoke, the five states, permission as an inert control carrying its reason, clean `axe`. A test asserts the **observable contract** — never the implementation.
 
-> **How to read this file.** Two parts, deliberately separated:
-> - **🌐 Generic pattern** — the **portable law**. Holds in any stack (React, Vue, etc.); the text stays true even after swapping frameworks. This is what review enforces as an invariant.
-> - **🛠️ Project-specific** — the **code** that implements each rule in the current stack (TypeScript · React · TanStack · @turystack). Swapping stacks rewrites **only** this part; the law above does not change.
->
-> Each rule carries an id `TST-n` linking the law (generic) to the code (specific). Gates bind by **id**, not by file/line. `TST-L*` rules are **stack lints**: they exist only because of the current language's ergonomics (they invert in another stack), but they stay id-registered and enforced in this project.
+> **How to read this file.** 🌐 Generic pattern is the portable law; 🛠️
+> Project-specific is that same law expressed as code in TypeScript · React ·
+> TanStack · @turystack. The split, `XXX-n` versus `XXX-Ln`, and why an
+> `ARC-…` law is cited and never restated: `turystack-frontend-pattern` › *How
+> a section is written*.
+
+## In this file
+
+- [🌐 Generic pattern (portable — stack-independent)](#generic-pattern-portable-stack-independent)
+  - [Invariants (the law the gates enforce)](#invariants-the-law-the-gates-enforce)
+- [🛠️ Project-specific (TypeScript · React · TanStack · @turystack)](#project-specific-typescript-react-tanstack-turystack)
+  - [✅ How to do it](#how-to-do-it)
+  - [❌ Never do](#never-do)
+
+**Rules defined here:** `TST-1` · `TST-2` · `TST-3` · `TST-4` · `TST-5` · `TST-6` · `TST-7` · `TST-8` · `TST-L1` · `TST-L2` — the law itself is the *Invariants* table below; every ❌ item cites the id it violates.
 
 ---
 
@@ -18,7 +28,7 @@
 
 **TST-3 — an async component tests the five realities.** Mount with pending, empty list, error, partial data and success — one fixture per state — and assert **intentional non-empty DOM per branch**. This is the render contract behind `07-ui-states-and-feedback.md`: the test is what proves no state was left implicit. **[TST-3]**
 
-**TST-4 — permission = absence in the DOM.** A permission gate is tested by asserting the element **does not exist** in the DOM without the permission (and does exist with it); never an assertion on `disabled`. The law hides, it does not disable (see `12-security-permissions.md`). **[TST-4]**
+**TST-4 — permission = present, inert and explained.** A permission gate is tested by asserting the element **exists and is disabled** without the permission — plus the reason being reachable (its text is in the accessible description/tooltip) — and enabled with it. Asserting absence is the failure now: the law states the denial, it does not erase it (`PRM-2`, `ARC-ERR-9`). A denied read surface is tested the same way: the reason card is in the DOM, and no `Try again` control exists next to it. **[TST-4]**
 
 **TST-5 — semantics, not implementation.** Query by role and accessible name; interact through real user events (click, typing, keyboard); never assert on a CSS class, internal DOM structure or internal state. Refactoring the visuals must not break a test. **[TST-5]**
 
@@ -32,20 +42,19 @@
 
 ### Invariants (the law the gates enforce)
 
-> Bind by **id**. `constitutional` = portable invariant (holds in any stack). `stack lint` = exists only because of the current language's ergonomics and inverts in another stack — still id-registered and enforced here. The **detector** (how the gate catches the violation) is project-specific and lives in the 🛠️ part below.
 
-| ID | Law (one line) | Type | Detector (🛠️) |
-|---|---|---|---|
-| TST-1 | Two distinct levels: unit (pure logic, no render) and component (render + interaction, data mocked at the boundary) | constitutional | Scenarios 1–2 |
-| TST-2 | Every data-bearing component has a render smoke (mounts without crashing + finds an element by semantics) | constitutional | Scenario 2 / ❌ |
-| TST-3 | An async component tests the five states (loading/empty/error/partial/success) with intentional DOM per branch | constitutional | Scenario 2 / ❌ |
-| TST-4 | A permission gate asserts absence in the DOM; never `disabled` | constitutional | Scenario 3 / ❌ |
-| TST-5 | Query by role/accessible name + user-event; never class/internal structure/internal state | constitutional | Scenarios 2–4 / ❌ |
-| TST-6 | `axe` runs clean in component tests | constitutional | Scenario 4 |
-| TST-7 | Mock at the SDK hook boundary; never intercept HTTP in a component test | constitutional | Scenario 2 / ❌ |
-| TST-8 | Shared harness (providers, session, fixtures) centralized; never duplicated per spec | constitutional | Scenario 3 / ❌ |
-| TST-L1 | Vitest + Testing Library + user-event; `.test.ts`/`.test.tsx` colocated with the file it tests | stack lint | Scenarios 1–4 / ❌ |
-| TST-L2 | SDK mocked via `vi.mock('@/~sdk/...')` + `vi.mocked(...).mockReturnValue(...)` | stack lint | Scenario 2 |
+| ID | Law (one line) | Class | Gate | Detector (🛠️) |
+|---|---|---|---|---|
+| TST-1 | Two distinct levels: unit (pure logic, no render) and component (render + interaction, data mocked at the boundary) | constitutional | `gate:test-levels` | Scenarios 1–2 |
+| TST-2 | Every data-bearing component has a render smoke (mounts without crashing + finds an element by semantics) | constitutional | `gate:render-smoke` | Scenario 2 / ❌ |
+| TST-3 | An async component tests the five states (loading/empty/error/partial/success) with intentional DOM per branch | constitutional | `test:five-outcomes` | Scenario 2 / ❌ |
+| TST-4 | A permission gate asserts present + `disabled` + a reachable reason; absence in the DOM is the violation | constitutional | `test:denial-visible` | Scenario 3 / ❌ |
+| TST-5 | Query by role/accessible name + user-event; never class/internal structure/internal state | constitutional | `grit:no-implementation-query` | Scenarios 2–4 / ❌ |
+| TST-6 | `axe` runs clean in component tests | constitutional | `test:axe-clean` | Scenario 4 |
+| TST-7 | Mock at the SDK hook boundary; never intercept HTTP in a component test | constitutional | `gate:mock-boundary` | Scenario 2 / ❌ |
+| TST-8 | Shared harness (providers, session, fixtures) centralized; never duplicated per spec | constitutional | `gate:shared-harness` | Scenario 3 / ❌ |
+| TST-L1 | Vitest + Testing Library + user-event; `.test.ts`/`.test.tsx` colocated with the file it tests | stack lint | `gate:test-file-placement` | Scenarios 1–4 / ❌ |
+| TST-L2 | SDK mocked via `vi.mock('@/~sdk/...')` + `vi.mocked(...).mockReturnValue(...)` | stack lint | `manual` | Scenario 2 |
 
 ---
 
@@ -61,8 +70,8 @@
   file (`src/features/users/support/normalize-user-search/normalize-user-search.test.ts`);
   hooks with Testing Library's `renderHook`; components in `.test.tsx` inside the
   component's folder.
-- **TST-2 / TST-3** — fixtures **typed by the `~sdk` types** (`makeUser(overrides)`) — never a hand-written shape (see `02-sdk.md`). The five states come out of `vi.mocked(useListUsers).mockReturnValue(...)`: `isPending: true` · `data: []` with `meta` · `isError` + `Exception` · partial data (missing optional) · full data. The asserted error is the `error.message` **as it came** (see `11-error-handling.md`).
-- **TST-4** — the harness's `renderWithPermissions` helper mounts the session context with controllable `permissionIds`; assert with `screen.queryByRole(...)` → `not.toBeInTheDocument()`.
+- **TST-2 / TST-3** — fixtures **typed by the `~sdk` types** (`makeUser(overrides)`) — never a hand-written shape (see `02-sdk.md`). The five states come out of `vi.mocked(useListUsers).mockReturnValue(...)`: `isPending: true` · `data: []` with `meta` · `isError` + `Exception` · partial data (missing optional) · full data. The mock stays at the **SDK hook**, not at `useDataOutcome`: the derivation is part of what the component promises, and mocking it would test the fixture instead of the screen. The asserted error is the `error.message` **as it came** (see `11-error-handling.md`). Since `UST-10` moved the branch order into the derivation, what these five fixtures now prove is what each outcome *renders* — the order itself is proved once, in the hook's own tests.
+- **TST-4** — the harness's `renderWithPermissions` helper mounts the session context with controllable `permissionIds`; assert with `screen.getByRole(...)` → `toBeDisabled()` **plus** the reason (`toHaveAccessibleDescription`, or the tooltip text queried after hovering the wrapper). A denied surface: `getByText` on the reason card and `queryByRole('button', { name: 'Try again' })` → `not.toBeInTheDocument()`.
 - **TST-5** — `screen.getByRole('button', { name: 'Save' })` + `await userEvent.click(...)`; `data-testid` only where there is no natural semantics (e.g. `Skeleton`).
 - **TST-6** — `axe` from `vitest-axe`: `expect(await axe(container)).toHaveNoViolations()` on the success state (the densest one).
 - **TST-7** — `vi.mock('@/~sdk/users')` at the top of the spec; no MSW/HTTP interception in a component test.
@@ -206,7 +215,7 @@ describe('UserList', () => {
 })
 ```
 
-**Scenario 3 — permission: absence in the DOM via the shared harness:** `[TST-4, TST-5, TST-8]`
+**Scenario 3 — permission: present, inert and explained, via the shared harness:** `[TST-4, TST-5, TST-8]`
 ```tsx
 // src/features/users/components/user-actions/user-actions.test.tsx
 import { screen } from '@testing-library/react'
@@ -218,22 +227,38 @@ import { makeUser } from '@/test/fixtures/user'
 
 import { UserActions } from './user-actions'
 
-it('hides Delete without permission (hides, does not disable)', () => {
+it('blocks Delete without permission and says why', () => {
   renderWithPermissions(<UserActions user={makeUser()} />, {
     permissionIds: ['users.read'],
   })
 
-  expect(
-    screen.queryByRole('button', { name: 'Delete' }),
-  ).not.toBeInTheDocument()
+  const deleteButton = screen.getByRole('button', { name: 'Delete' })
+
+  expect(deleteButton).toBeDisabled() // present and inert — never absent
+  expect(deleteButton).toHaveAccessibleDescription(/Delete users permission/) // the reason is reachable
 })
 
-it('shows Delete with permission', () => {
+it('enables Delete with permission', () => {
   renderWithPermissions(<UserActions user={makeUser()} />, {
     permissionIds: ['users.read', 'users.delete'],
   })
 
-  expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled()
+})
+
+it('renders the reason card, with no retry, on a denied read', () => {
+  vi.mocked(useListReports).mockReturnValue(
+    makeListReportsResult({ error: makeException({ code: ErrorCode.FORBIDDEN }) }),
+  )
+
+  renderWithPermissions(<ReportList params={{ limit: 10, page: 1 }} />, {
+    permissionIds: [],
+  })
+
+  expect(screen.getByText(/do not have access/i)).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Try again' }), // retry would fail forever
+  ).not.toBeInTheDocument()
 })
 ```
 
@@ -263,7 +288,11 @@ fireEvent.click(screen.getByRole('button'))
 // ❌ [TST-7] intercepting HTTP in a component test (the mock goes at the hook boundary)
 server.use(http.get('/api/users', () => HttpResponse.json({ data: [] })))
 
-// ❌ [TST-4] permission tested as disabled (the law is absence in the DOM — see 12-security-permissions.md)
+// ❌ [TST-4] permission tested as absence — the law is present + inert + reason
+// (see 12-security-permissions.md)
+expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+
+// ❌ [TST-4] inert asserted with no reason — passes on a control nobody can understand
 expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
 
 // ❌ [TST-3] async component on the happy path only — loading/empty/error/partial missing

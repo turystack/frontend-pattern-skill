@@ -25,6 +25,8 @@ pnpm add -D @turystack/frontend-pattern
 - [Security & Permissions](12-security-permissions.md)
 - [Testing](13-testing.md)
 - [Telemetry](14-telemetry.md)
+- [Performance](15-performance.md)
+- [File uploads](16-file-uploads.md)
 - [Skill manifest](SKILL.md)
 
 ## Documentation
