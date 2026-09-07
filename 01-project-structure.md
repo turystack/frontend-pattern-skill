@@ -90,7 +90,10 @@ a product app carries instead is one line:
 <AuthProvider client="admin">
 ```
 
-`@repo/oauth-clients` owns the redirect, the PKCE exchange and the session
+Every package the repository owns is scoped by the repository's own name, so
+`acme` here stands in for whatever the product is called.
+
+`@acme/oauth-clients` owns the redirect, the PKCE exchange and the session
 decision. A product app therefore has no `auth/` of its own: no storage access,
 no token, no callback handling. That is `ARC-SEC-11` — a credential has a single
 owner — applied across the repository rather than inside one app.
@@ -122,7 +125,7 @@ src/
 ├── api/                     # mandatory: app-local SDK integration
 │   ├── http-client.ts
 │   └── query-client.ts
-│                             # no auth/: @repo/oauth-clients owns the session
+│                             # no auth/: @acme/oauth-clients owns the session
 ├── ui/                      # app-local primitives that emerge in the product
 ├── hooks/                   # truly cross-cutting hooks, optional
 ├── layouts/                 # mandatory: building the product shells
@@ -179,7 +182,7 @@ src/
 │       ├── support/        # conditional
 │       └── index.ts
 ├── api/                    # mandatory
-│                            # no auth/: @repo/oauth-clients owns the session
+│                            # no auth/: @acme/oauth-clients owns the session
 ├── ui/                     # app-local primitives, when they emerge
 ├── hooks/                  # conditional
 ├── layouts/                # mandatory: shells with react-mobile
@@ -200,7 +203,7 @@ rules stay out of `app/`.
 | Feature-private helper, mapper or hook | `features/{feature}/support/{concern}/` |
 | The feature's public API | `features/{feature}/index.ts` |
 | HTTP client and QueryClient | `api/` |
-| Session and the OAuth exchange | `@repo/oauth-clients` — never the app |
+| Session and the OAuth exchange | `@acme/oauth-clients` — never the app |
 | The permissions the signed-in user holds | the profile query, into `ProtectedProvider` |
 | Invoice-specific formatter | `features/invoices/support/` |
 | Generic formatter already shared | appropriate Turystack library |

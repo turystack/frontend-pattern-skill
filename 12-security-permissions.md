@@ -63,11 +63,11 @@ What follows in this section is how the Turystack frontend expresses them.
 
 | ID | Law | How this stack expresses it |
 |---|---|---|
-| `ARC-SEC-1` | Scope of the authenticated context. | session from `@repo/oauth-clients`, never a UI field |
+| `ARC-SEC-1` | Scope of the authenticated context. | session from `@acme/oauth-clients`, never a UI field |
 | `ARC-SEC-2` | The backend revalidates; blocked UI is never enforcement. | `Protected` is UX; the `403` remains the protection |
 | `ARC-ERR-9` | Unavailability is stated, never hidden — permission is one cause among plan, state, dependency and limit. | `Protected` makes it inert + reason; a denied surface renders `Unavailable`; non-permission blocks in 07-ui-states-and-feedback.md |
 | `ARC-SEC-10` | Untrusted data neutralized on output. | React escapes text by default; rich HTML only via a dedicated sanitizer |
-| `ARC-SEC-11` | A credential has a single owner. | `@repo/oauth-clients` is the owner; no app reads storage or a token |
+| `ARC-SEC-11` | A credential has a single owner. | `@acme/oauth-clients` is the owner; no app reads storage or a token |
 | `ARC-SEC-12` | Permission comes from a single backend catalogue. | permission ids from the session/SDK contract, never a string per feature |
 | `ARC-SEC-7` | Secrets and PII out of bundle, log and telemetry. | `VITE_`/`EXPO_PUBLIC_` is public by construction |
 
@@ -83,7 +83,7 @@ that requires a secret belongs to the backend and is consumed through the SDK.
 
 ### Auth ownership
 
-One package owns the session for the whole repository: `@repo/oauth-clients`.
+One package owns the session for the whole repository: `@acme/oauth-clients`.
 It performs the redirect, the PKCE exchange and the refresh, and it exposes
 `AuthProvider` and `useSession`. An application wraps its tree and writes
 nothing else — no storage access, no token, no callback route of its own.
